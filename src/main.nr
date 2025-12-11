@@ -52,7 +52,7 @@ contract Governance {
         let options = NoteGetterOptions::new()
             .select(ProposalNote::properties().proposal_id, Comparator.EQ, proposal_id)
             .set_limit(1);
-        let notes = storage.proposals.get_notes(options);
+        let notes = storage.proposals.pop_notes(options);
         assert(notes.len() == 1, "Proposal not found");
 
         // Create nullifier to prevent double voting
@@ -63,15 +63,12 @@ contract Governance {
 
         // Update the proposal with the vote
         let retrieved_note = notes.get_unchecked(0);
-        let proposal_note = retrieved_note.note;
 
         // Use the vote method to update tally
-        let updated_proposal = proposal_note.vote(choice);
+        let updated_proposal = retrieved_note.vote(choice);
 
         // Remove old proposal and add updated one
-        storage.proposals.remove(retrieved_note);
         let insertion = storage.proposals.insert(updated_proposal);
-        insertion.emit(context.msg_sender().unwrap(), 0);
     }
 
 }
