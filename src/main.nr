@@ -33,20 +33,19 @@ contract Governance {
 
     #[external("private")]
     fn cast_vote(proposal_id: Field, choice: u32) {
-        // Check if caller is a member
-        let members_note = storage.members.get_note();
-        let msg_sender = context.msg_sender().unwrap();
-        let mut is_member = false;
+        let _ = storage.members.replace(|note| {
+            let msg_sender = context.msg_sender().unwrap();
+            let mut is_member = false;
 
-        // Check membership
-        for i in 0..10 {
-            if members_note.content.note.members[i] == msg_sender.inner {
-                is_member = true;
+            // Check membership
+            for i in 0..10 {
+                if note.members[i] == msg_sender.inner {
+                    is_member = true;
+                }
             }
-        }
-        assert(is_member, "Not a member");
-
-        let _ = storage.members.initialize(members_note.content.note);
+            assert(is_member, "Not a member");
+            note
+        });
 
         // Find the proposal
         let options = NoteGetterOptions::new()
@@ -56,7 +55,7 @@ contract Governance {
         assert(notes.len() == 1, "Proposal not found");
 
         // Create nullifier to prevent double voting
-        let msg_sender_npk_hash = get_public_keys(msg_sender).npk_m.hash();
+        let msg_sender_npk_hash = get_public_keys(context.msg_sender().unwrap()).npk_m.hash();
         let secret = context.request_nsk_app(msg_sender_npk_hash);
         let nullifier = poseidon2_hash([proposal_id, secret]);
         context.push_nullifier(nullifier);
