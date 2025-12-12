@@ -3,6 +3,7 @@ pub mod types;
 
 #[aztec]
 contract Governance {
+    use crate::types::field_note::FieldNote;
     use crate::types::members_note::MembersNote;
     use crate::types::proposal_note::ProposalNote;
     use aztec::context;
@@ -18,6 +19,7 @@ contract Governance {
     #[storage]
     struct Storage<Context> {
         members: PrivateMutable<MembersNote, Context>,
+        last_proposal_id: PrivateMutable<FieldNote, Context>,
         proposals: PrivateSet<ProposalNote, Context>,
     }
 
@@ -28,7 +30,20 @@ contract Governance {
         let mut members = [0; 10];
         members[0] = admin.inner;
         let members_note = MembersNote::new(context.this_address(), members);
+        let count_note = FieldNote::new(0, context.this_address());
+        let _ = storage.last_proposal_id.initialize(count_note);
         let _ = storage.members.initialize(members_note);
+    }
+
+    #[external("private")]
+    fn create_proposal() {
+        let _ = storage.last_proposal_id.replace(|note| {
+            let count = note.value();
+            let proposal = ProposalNote::new(context.this_address(), count);
+            storage.proposals.insert(proposal);
+            let new_count_note = FieldNote::new(count + 1, context.this_address());
+            new_count_note
+        });
     }
 
     #[external("private")]
@@ -48,9 +63,11 @@ contract Governance {
         });
 
         // Find the proposal
-        let options = NoteGetterOptions::new()
-            .select(ProposalNote::properties().proposal_id, Comparator.EQ, proposal_id)
-            .set_limit(1);
+        let options = NoteGetterOptions::new().select(
+            ProposalNote::properties().proposal_id,
+            Comparator.EQ,
+            proposal_id,
+        );
         let notes = storage.proposals.pop_notes(options);
         assert(notes.len() == 1, "Proposal not found");
 
