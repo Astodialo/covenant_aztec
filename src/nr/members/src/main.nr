@@ -33,6 +33,7 @@ pub contract Members {
     // note structs
     use crate::types::hat_note::HatNote;
     use address_note::AddressNote;
+    use field_note::FieldNote;
 
     /// @param symbol The symbol of the NFT
     /// @param name The name of the NFT
@@ -44,6 +45,7 @@ pub contract Members {
     struct Storage<Context> {
         gov: Owned<PrivateMutable<AddressNote, Context>, Context>,
         members: Owned<PrivateSet<HatNote, Context>, Context>,
+        lastTopHatId: Owned<PrivateMutable<FieldNote, Context>, Context>,
     }
 
     #[external("private")]
@@ -96,6 +98,76 @@ pub contract Members {
                 note
             })
             .deliver(MessageDelivery.ONCHAIN_CONSTRAINED);
+    }
+
+    #[contract_library_method]
+    fn _balance_of(
+        wearer: AztecAddress,
+        hat_id: Field,
+        context: &mut PrivateContext,
+        storage: Storage<&mut PrivateContext>,
+    ) -> Field {
+        let mut balance = 0;
+        let options =
+            NoteGetterOptions::new().select(HatNote::properties().hatted, Comparator.EQ, wearer);
+        let notes = storage.members.at(context.this_address()).pop_notes(options);
+
+        for i in 0..notes.max_len() {
+            if i < notes.len() {
+                let note = notes.get_unchecked(i);
+                if note.hat_id == hat_id {
+                    balance += 1;
+                }
+            }
+        }
+
+        balance
+    }
+
+    #[contract_library_method]
+    fn get_next_id(
+        admin: AztecAddress,
+        context: &mut PrivateContext,
+        storage: Storage<&mut PrivateContext>,
+    ) -> Field {
+        let options =
+            NoteGetterOptions::new().select(HatNote::properties().hatted, Comparator.EQ, admin);
+        let notes = storage.members.at(context.this_address()).pop_notes(options);
+        assert(notes.len() == 1, "Admin not found");
+
+        let admin_note = notes.get_unchecked(0);
+        let admin_hat_id = admin_note.hat_id;
+        let lastHatId = admin_note.lastHatId;
+        HatNote::buildHatId(admin_hat_id, lastHatId)
+    }
+
+    #[external("private")]
+    fn create_hat(
+        hat_id: Field,
+        maxSupply: u32,
+        eligibility: AztecAddress,
+        toggle: AztecAddress,
+        mutable: bool,
+    ) {
+        let this_address = self.context.this_address();
+
+        _validate(self.context, self.storage);
+
+        let sender = self.context.maybe_msg_sender().unwrap();
+        let hat_note = HatNote::new(
+            eligibility,
+            maxSupply,
+            0,
+            0,
+            toggle,
+            if mutable { 1 } else { 0 },
+            hat_id,
+            sender,
+        );
+
+        self.storage.members.at(this_address).insert(hat_note).deliver(
+            MessageDelivery.ONCHAIN_CONSTRAINED,
+        );
     }
 
     #[external("private")]

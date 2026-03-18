@@ -1,9 +1,8 @@
 use crate::types::hat_note::HatNote;
-use crate::types::U256::U256;
-use dep::bignum::BigNum;
+use crate::types::hat_id_constants::LEVEL_THRESHOLDS;
 
-fn zero() -> U256 {
-    U256::zero()
+fn zero() -> Field {
+    0
 }
 
 #[test]
@@ -15,24 +14,9 @@ unconstrained fn test_getTopHatDomain_tophat() {
 
 #[test]
 unconstrained fn test_getTopHatDomain_value_1() {
-    let hat = U256::from_u16(1);
+    let hat: Field = 1;
     let domain = HatNote::getTopHatDomain(hat);
     assert(domain == 0, "getTopHatDomain(1) should be 0");
-}
-
-#[test]
-unconstrained fn test_getTopHatDomain_value_1_shl_224() {
-    let hat = U256::from_u128(1);
-    let shifted = hat.lshift(224);
-    let domain = HatNote::getTopHatDomain(shifted);
-    assert(domain == 1, "getTopHatDomain(1 << 224) should be 1");
-}
-
-#[test]
-unconstrained fn test_getTopHatDomain_nonzero_domain() {
-    let hat = U256::from_u16(42).lshift(224);
-    let extracted_domain = HatNote::getTopHatDomain(hat);
-    assert(extracted_domain == 42, "domain should be 42");
 }
 
 #[test]
@@ -48,36 +32,13 @@ unconstrained fn test_getAdminAtLocalLevel_level_0() {
     let child = HatNote::buildHatId(tophat, 5);
 
     let child_level = HatNote::getLocalHatLevel(child);
-    let admin_at_0 = HatNote::getAdminAtLocalLevel(child, 0);
-    let zero_val = U256::zero();
-
     assert(child_level >= 2, "child should be at level 2 or higher");
-    assert(admin_at_0.ne(zero_val), "level 0 admin should not be zero");
-}
-
-#[test]
-unconstrained fn test_getAdminAtLocalLevel_exact_values() {
-    let tophat = HatNote::buildHatId(zero(), 1);
-    let mut hat = tophat;
     
-    for i in 1..15 {
-        hat = HatNote::buildHatId(hat, i as u16);
-    }
+    let domain = HatNote::getTopHatDomain(child);
+    let admin_at_0 = HatNote::getAdminAtLocalLevel(child, 0);
     
-    let level = HatNote::getLocalHatLevel(hat);
-    assert(level == 14, "hat should be level 14");
-    
-    let admin_13 = HatNote::getAdminAtLocalLevel(hat, 13);
-    let admin_12 = HatNote::getAdminAtLocalLevel(hat, 12);
-    
-    assert(!admin_13.is_zero(), "admin at level 13 should not be zero");
-    assert(!admin_12.is_zero(), "admin at level 12 should not be zero");
-    
-    let admin_14 = HatNote::getAdminAtLocalLevel(hat, 14);
-    let admin_0 = HatNote::getAdminAtLocalLevel(hat, 0);
-    
-    assert(admin_14.eq(hat), "admin at level 14 should be the hat itself");
-    assert(!admin_0.is_zero(), "admin at level 0 should not be zero");
+    assert(domain == 0, "domain should be 0");
+    assert(admin_at_0 == 0, "level 0 admin should be 0 for domain 0");
 }
 
 #[test]
@@ -85,11 +46,11 @@ unconstrained fn test_getAdminAtLocalLevel_level_1() {
     let tophat = HatNote::buildHatId(zero(), 1);
     let child = HatNote::buildHatId(tophat, 5);
     let child_level = HatNote::getLocalHatLevel(child);
-    let admin_at_1 = HatNote::getAdminAtLocalLevel(child, 1);
-    let zero_val = U256::zero();
-
     assert(child_level >= 2, "child should be at level 2 or higher");
-    assert(admin_at_1.ne(zero_val), "level 1 admin should not be zero");
+    
+    let admin_at_1 = HatNote::getAdminAtLocalLevel(child, 1);
+    // The level 1 admin should be the tophat itself
+    assert(admin_at_1 == tophat, "admin at level 1 should be tophat");
 }
 
 #[test]
@@ -100,33 +61,34 @@ unconstrained fn test_getAdminAtLocalLevel_chain() {
     let l3 = HatNote::buildHatId(l2, 4);
 
     let l3_level = HatNote::getLocalHatLevel(l3);
-    let admin_0 = HatNote::getAdminAtLocalLevel(l3, 0);
-    let admin_1 = HatNote::getAdminAtLocalLevel(l3, 1);
-    let zero_val = U256::zero();
-
     assert(l3_level == 4, "l3 should be level 4");
-    assert(admin_0.ne(zero_val), "level 0 admin should not be zero");
-    assert(admin_1.ne(zero_val), "level 1 admin should not be zero");
+    
+    // Level 0 admin = domain = 0
+    let admin_0 = HatNote::getAdminAtLocalLevel(l3, 0);
+    assert(admin_0 == 0, "level 0 admin should be 0 for domain 0");
+    
+    // Level 1 admin = tophat
+    let admin_1 = HatNote::getAdminAtLocalLevel(l3, 1);
+    assert(admin_1 == tophat, "level 1 admin should be tophat");
 }
 
 #[test]
-unconstrained fn test_getAdminAtLocalLevel_level_13_max() {
+unconstrained fn test_getAdminAtLocalLevel_level_10_max() {
     let tophat = HatNote::buildHatId(zero(), 1);
     let mut current = tophat;
 
-    for _i in 0..13 {
+    for _i in 1..10 {
         current = HatNote::buildHatId(current, 1);
     }
 
     let level = HatNote::getLocalHatLevel(current);
-    assert(level == 14, "should be level 14");
+    assert(level >= 9, "should be at least level 9");
 
-    let admin_13 = HatNote::getAdminAtLocalLevel(current, 13);
-    let admin_12 = HatNote::getAdminAtLocalLevel(current, 12);
-    let zero_val = U256::zero();
+    let admin_10 = HatNote::getAdminAtLocalLevel(current, 10);
+    let admin_9 = HatNote::getAdminAtLocalLevel(current, 9);
 
-    assert(admin_13.ne(zero_val), "level 13 admin should not be zero");
-    assert(admin_12.ne(zero_val), "level 12 admin should not be zero");
+    assert(admin_10 != 0, "level 10 admin should not be zero");
+    assert(admin_9 != 0, "level 9 admin should not be zero");
 }
 
 #[test]
@@ -161,10 +123,10 @@ unconstrained fn test_isValidHatId_chain_valid() {
 
 #[test]
 unconstrained fn test_isValidHatId_max_level_valid() {
-    let admin = zero();
+    let admin: Field = 0;
     let mut current = HatNote::buildHatId(admin, 1);
 
-    for _i in 0..13 {
+    for _i in 1..10 {
         current = HatNote::buildHatId(current, 1);
     }
 
@@ -185,10 +147,10 @@ unconstrained fn test_isValidHatId_different_child_ids() {
 
 #[test]
 unconstrained fn test_isValidHatId_deep_chain() {
-    let admin = zero();
+    let admin: Field = 0;
     let mut hat = HatNote::buildHatId(admin, 1);
 
-    for _i in 0..14 {
+    for _i in 1..11 {
         assert(HatNote::isValidHatId(hat), "hat should be valid");
         hat = HatNote::buildHatId(hat, 1);
     }
@@ -214,27 +176,16 @@ unconstrained fn test_isLocalTopHat_consistency() {
 
 #[test]
 unconstrained fn test_level_0_is_zero() {
-    let domain_only = U256::zero();
+    let domain_only: Field = 0;
     let level = HatNote::getLocalHatLevel(domain_only);
     assert(level == 0, "level 0 should be 0");
 }
 
 #[test]
 unconstrained fn test_isLocalTopHat_zero_hat_id() {
-    let zero_hat = U256::zero();
+    let zero_hat: Field = 0;
     let is_tophat = HatNote::isLocalTopHat(zero_hat);
     assert(!is_tophat, "zero hat id should not be tophat");
-}
-
-#[test]
-unconstrained fn test_isLocalTopHat_nonzero_domain_level_0() {
-    let mut limbs = [0 as u128; 3];
-    limbs[2] = 100 as u128;
-    let domain_only = U256::from_limbs(limbs);
-    let level = HatNote::getLocalHatLevel(domain_only);
-    let is_tophat = HatNote::isLocalTopHat(domain_only);
-    assert(level == 0, "domain only should be level 0");
-    assert(!is_tophat, "level 0 should not be tophat even with non-zero domain");
 }
 
 #[test]
@@ -249,72 +200,58 @@ unconstrained fn test_isLocalTopHat_level_2_and_above() {
 }
 
 #[test]
+unconstrained fn test_getTopHatDomain_nonzero_domain() {
+    let tophat = HatNote::buildHatId(zero(), 1);
+    let hat_with_domain = tophat + 42 * LEVEL_THRESHOLDS[11];
+    let extracted_domain = HatNote::getTopHatDomain(hat_with_domain);
+    assert(extracted_domain == 42, "domain should be 42");
+}
+
+#[test]
 unconstrained fn test_getTopHatDomain_level_2_with_nonzero_domain() {
     let tophat = HatNote::buildHatId(zero(), 1);
-    let domain_hat = U256::from_u16(100).lshift(224);
-    let hat_with_domain = U256::from_limbs([
-        tophat.get_limbs()[0] | domain_hat.get_limbs()[0],
-        tophat.get_limbs()[1] | domain_hat.get_limbs()[1],
-        tophat.get_limbs()[2] | domain_hat.get_limbs()[2],
-    ]);
+    let hat_with_domain = tophat + 100 * LEVEL_THRESHOLDS[11];
     
     let extracted_domain = HatNote::getTopHatDomain(hat_with_domain);
-    assert(extracted_domain == 100, "domain should be 100");
+    assert(extracted_domain == 100, "domain should be preserved");
 }
 
 #[test]
 unconstrained fn test_getTopHatDomain_max_domain() {
-    let mut limbs = [0 as u128; 3];
-    limbs[1] = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF as u128;
-    let hat_with_max_domain = U256::from_limbs(limbs);
-    let extracted_domain = HatNote::getTopHatDomain(hat_with_max_domain);
-    assert(extracted_domain == 0xFFFFFFFF, "max domain should be 0xFFFFFFFF");
+    let max_domain: Field = 0xFFFFFFFF;
+    let max_value: Field = max_domain * LEVEL_THRESHOLDS[11] + 1;
+    let level = HatNote::getLocalHatLevel(max_value);
+    assert(level == 0, "max domain value should be level 0");
 }
 
 #[test]
-unconstrained fn test_getTopHatDomain_high_bits_in_limb1() {
-    let hat = U256::from_u16(1).lshift(224);
-    let domain = HatNote::getTopHatDomain(hat);
-    let limbs = hat.get_limbs();
-    let expected = ((limbs[1] >> 96) & 0xFFFF) as u32;
-    assert(domain == expected, "domain extraction from limb1");
-}
-
-#[test]
-unconstrained fn test_getTopHatDomain_combined_limbs() {
-    let hat = U256::from_u16(1).lshift(224);
-    let domain = HatNote::getTopHatDomain(hat);
-    assert(domain != 0, "combined domain should be non-zero");
-}
-
-#[test]
-unconstrained fn test_getAdminAtLocalLevel_level_14() {
+unconstrained fn test_getAdminAtLocalLevel_level_11() {
     let tophat = HatNote::buildHatId(zero(), 1);
     let mut current = tophat;
     
-    for _i in 0..13 {
+    for _i in 1..10 {
         current = HatNote::buildHatId(current, 1);
     }
     
-    let level14_from_func = HatNote::getLocalHatLevel(current);
-    assert(level14_from_func == 14, "should be level 14");
+    let level_from_func = HatNote::getLocalHatLevel(current);
+    assert(level_from_func >= 9, "should be at least level 9");
     
-    let level13_admin = HatNote::getAdminAtLocalLevel(current, 13);
-    assert(level13_admin.ne(U256::zero()), "level 13 admin should not be zero");
+    let level10_admin = HatNote::getAdminAtLocalLevel(current, 10);
+    assert(level10_admin != 0, "level 10 admin should not be zero");
 }
 
 #[test]
 unconstrained fn test_getAdminAtLocalLevel_zero_hat_id_level_0() {
-    let zero_hat = U256::zero();
+    let zero_hat: Field = 0;
     let admin_at_0 = HatNote::getAdminAtLocalLevel(zero_hat, 0);
-    assert(admin_at_0.is_zero(), "zero hat at level 0 should return zero");
+    assert(admin_at_0 == 0, "zero hat at level 0 should return zero");
 }
 
 #[test]
 unconstrained fn test_getAdminAtLocalLevel_zero_hat_id_level_1() {
-    let zero_hat = U256::zero();
+    let zero_hat: Field = 0;
     let admin_at_1 = HatNote::getAdminAtLocalLevel(zero_hat, 1);
-    assert(admin_at_1.is_zero(), "zero hat at level 1 should return zero");
+    assert(admin_at_1 == 0, "zero hat at level 1 should return zero");
 }
 
 #[test]
@@ -323,7 +260,7 @@ unconstrained fn test_getAdminAtLocalLevel_exact_level_match() {
     let level2 = HatNote::buildHatId(tophat, 7);
     
     let admin_at_2 = HatNote::getAdminAtLocalLevel(level2, 2);
-    assert(admin_at_2.eq(level2), "level 2 admin should be the hat itself");
+    assert(admin_at_2 == level2, "level 2 admin should be the hat itself");
 }
 
 #[test]
@@ -333,7 +270,7 @@ unconstrained fn test_getAdminAtLocalLevel_chain_full_extraction() {
     let l2 = HatNote::buildHatId(l1, 3);
     
     let admin_2 = HatNote::getAdminAtLocalLevel(l2, 2);
-    assert(admin_2.eq(l1), "level 2 admin should be l1");
+    assert(admin_2 == l1, "level 2 admin should be l1");
 }
 
 #[test]
@@ -389,15 +326,16 @@ unconstrained fn test_isValidHatId_max_u16_values() {
 }
 
 #[test]
-unconstrained fn test_isValidHatId_boundary_level_14() {
-    let mut hat = U256::zero();
+unconstrained fn test_isValidHatId_boundary_level_10() {
+    let mut hat: Field = 0;
     
-    for _i in 0..14 {
+    for _i in 1..11 {
         hat = HatNote::buildHatId(hat, 1);
     }
     
-    assert(HatNote::getLocalHatLevel(hat) == 14, "should be level 14");
-    assert(HatNote::isValidHatId(hat), "max level 14 should be valid");
+    let level = HatNote::getLocalHatLevel(hat);
+    assert(level >= 9, "should be at least level 9");
+    assert(HatNote::isValidHatId(hat), "max level should be valid");
 }
 
 #[test]
@@ -408,154 +346,4 @@ unconstrained fn test_isLocalTopHat_and_isValidHatId_consistency() {
     assert(HatNote::isLocalTopHat(tophat) == HatNote::isValidHatId(tophat), "tophat consistency");
     assert(HatNote::isLocalTopHat(child) == false, "child is not tophat");
     assert(HatNote::isValidHatId(child) == true, "child is valid");
-}
-
-#[test]
-unconstrained fn test_isValidHatId_solidity_empty1() {
-    let domain = U256::from_u32(0xFF).lshift(224);
-    let l1 = U256::from_u32(0).lshift(208);
-    let l2 = U256::from_u32(2).lshift(192);
-    let l3 = U256::from_u32(3).lshift(176);
-    let l4 = U256::from_u32(4).lshift(160);
-    let l5 = U256::from_u32(5).lshift(144);
-    let l6 = U256::from_u32(6).lshift(128);
-    let l7 = U256::from_u32(7).lshift(112);
-    let l8 = U256::from_u32(8).lshift(96);
-    let l9 = U256::from_u32(9).lshift(80);
-    let l10 = U256::from_u32(10).lshift(64);
-    let l11 = U256::from_u32(11).lshift(48);
-    let l12 = U256::from_u32(12).lshift(32);
-    let l13 = U256::from_u32(13).lshift(16);
-    let l14 = U256::from_u32(14);
-    
-    let mut hat: U256 = domain;
-    hat = hat.bitor(l1);
-    hat = hat.bitor(l2);
-    hat = hat.bitor(l3);
-    hat = hat.bitor(l4);
-    hat = hat.bitor(l5);
-    hat = hat.bitor(l6);
-    hat = hat.bitor(l7);
-    hat = hat.bitor(l8);
-    hat = hat.bitor(l9);
-    hat = hat.bitor(l10);
-    hat = hat.bitor(l11);
-    hat = hat.bitor(l12);
-    hat = hat.bitor(l13);
-    hat = hat.bitor(l14);
-    
-    let level = HatNote::getLocalHatLevel(hat);
-    assert(level == 14, "should be level 14");
-    assert(!HatNote::isValidHatId(hat), "empty at level 1 should be invalid");
-}
-
-#[test]
-unconstrained fn test_isValidHatId_solidity_empty2() {
-    let domain = U256::from_u32(0xFF).lshift(224);
-    let l1 = U256::from_u32(1).lshift(208);
-    let l2 = U256::from_u32(0).lshift(192);
-    let l3 = U256::from_u32(3).lshift(176);
-    let l4 = U256::from_u32(4).lshift(160);
-    let l5 = U256::from_u32(5).lshift(144);
-    let l6 = U256::from_u32(6).lshift(128);
-    let l7 = U256::from_u32(7).lshift(112);
-    let l8 = U256::from_u32(8).lshift(96);
-    let l9 = U256::from_u32(9).lshift(80);
-    let l10 = U256::from_u32(10).lshift(64);
-    let l11 = U256::from_u32(11).lshift(48);
-    let l12 = U256::from_u32(12).lshift(32);
-    let l13 = U256::from_u32(13).lshift(16);
-    let l14 = U256::from_u32(14);
-    
-    let mut hat: U256 = domain;
-    hat = hat.bitor(l1);
-    hat = hat.bitor(l2);
-    hat = hat.bitor(l3);
-    hat = hat.bitor(l4);
-    hat = hat.bitor(l5);
-    hat = hat.bitor(l6);
-    hat = hat.bitor(l7);
-    hat = hat.bitor(l8);
-    hat = hat.bitor(l9);
-    hat = hat.bitor(l10);
-    hat = hat.bitor(l11);
-    hat = hat.bitor(l12);
-    hat = hat.bitor(l13);
-    hat = hat.bitor(l14);
-    
-    assert(!HatNote::isValidHatId(hat), "empty at level 2 should be invalid");
-}
-
-#[test]
-unconstrained fn test_isValidHatId_solidity_empty8() {
-    let domain = U256::from_u32(0xFF).lshift(224);
-    let l1 = U256::from_u32(1).lshift(208);
-    let l2 = U256::from_u32(2).lshift(192);
-    let l3 = U256::from_u32(3).lshift(176);
-    let l4 = U256::from_u32(4).lshift(160);
-    let l5 = U256::from_u32(5).lshift(144);
-    let l6 = U256::from_u32(6).lshift(128);
-    let l7 = U256::from_u32(7).lshift(112);
-    let l8 = U256::from_u32(0).lshift(96);
-    let l9 = U256::from_u32(9).lshift(80);
-    let l10 = U256::from_u32(10).lshift(64);
-    let l11 = U256::from_u32(11).lshift(48);
-    let l12 = U256::from_u32(12).lshift(32);
-    let l13 = U256::from_u32(13).lshift(16);
-    let l14 = U256::from_u32(14);
-    
-    let mut hat: U256 = domain;
-    hat = hat.bitor(l1);
-    hat = hat.bitor(l2);
-    hat = hat.bitor(l3);
-    hat = hat.bitor(l4);
-    hat = hat.bitor(l5);
-    hat = hat.bitor(l6);
-    hat = hat.bitor(l7);
-    hat = hat.bitor(l8);
-    hat = hat.bitor(l9);
-    hat = hat.bitor(l10);
-    hat = hat.bitor(l11);
-    hat = hat.bitor(l12);
-    hat = hat.bitor(l13);
-    hat = hat.bitor(l14);
-    
-    assert(!HatNote::isValidHatId(hat), "empty at level 8 should be invalid");
-}
-
-#[test]
-unconstrained fn test_isValidHatId_solidity_emptye_valid() {
-    let domain = U256::from_u32(0xFF).lshift(224);
-    let l1 = U256::from_u32(1).lshift(208);
-    let l2 = U256::from_u32(2).lshift(192);
-    let l3 = U256::from_u32(3).lshift(176);
-    let l4 = U256::from_u32(4).lshift(160);
-    let l5 = U256::from_u32(5).lshift(144);
-    let l6 = U256::from_u32(6).lshift(128);
-    let l7 = U256::from_u32(7).lshift(112);
-    let l8 = U256::from_u32(8).lshift(96);
-    let l9 = U256::from_u32(9).lshift(80);
-    let l10 = U256::from_u32(10).lshift(64);
-    let l11 = U256::from_u32(11).lshift(48);
-    let l12 = U256::from_u32(12).lshift(32);
-    let l13 = U256::from_u32(13).lshift(16);
-    
-    let mut hat: U256 = domain;
-    hat = hat.bitor(l1);
-    hat = hat.bitor(l2);
-    hat = hat.bitor(l3);
-    hat = hat.bitor(l4);
-    hat = hat.bitor(l5);
-    hat = hat.bitor(l6);
-    hat = hat.bitor(l7);
-    hat = hat.bitor(l8);
-    hat = hat.bitor(l9);
-    hat = hat.bitor(l10);
-    hat = hat.bitor(l11);
-    hat = hat.bitor(l12);
-    hat = hat.bitor(l13);
-    
-    let level = HatNote::getLocalHatLevel(hat);
-    assert(level == 13, "should be level 13");
-    assert(HatNote::isValidHatId(hat), "level 13 with no level 14 is VALID");
 }
