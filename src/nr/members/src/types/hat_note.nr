@@ -62,19 +62,19 @@ impl NoteHash for HatNote {
     }
 }
 
-fn bits_to_u16(bits: [u1; 254], offset: u32) -> u16 {
+fn bits_to_u16(bits: [bool; 254], offset: u32) -> u16 {
     let mut result: u16 = 0;
     for i in 0..16 {
-        let bit_val: u16 = if bits[offset + i] == 1 { 1 } else { 0 };
+        let bit_val: u16 = if bits[offset + i] { 1 } else { 0 };
         result = result | (bit_val << i as u16);
     }
     result
 }
 
-fn bits_to_u32(bits: [u1; 254], offset: u32) -> u32 {
+fn bits_to_u32(bits: [bool; 254], offset: u32) -> u32 {
     let mut result: u32 = 0;
     for i in 0..32 {
-        let bit_val: u32 = if bits[offset + i] == 1 { 1 } else { 0 };
+        let bit_val: u32 = if bits[offset + i] { 1 } else { 0 };
         result = result | (bit_val << i);
     }
     result
@@ -107,7 +107,7 @@ impl HatNote {
         let bits = hatId.to_le_bits::<254>();
         let mut level: u32 = 0;
         for i in 16..176 {
-            if bits[i] == 1 {
+            if bits[i] {
                 level = i / 16;
             }
         }

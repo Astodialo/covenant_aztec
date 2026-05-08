@@ -157,32 +157,17 @@ contract Governance {
         token_id: Field,
         member: AztecAddress,
     ) {
-        _validate_captain(self.context, self.storage);
-
-        let this_address = self.context.this_address();
-
-        let mem_contract_note = self.storage.mem_contract.at(this_address).replace(|note| note);
-        let mem_contract = mem_contract_note.get_note().address;
+        let mem_contract = _validate_captain(self.context, self.storage);
 
         Members::at(mem_contract)
             .add_member(eligibility, maxsupply, supply, lasthatid, toggle, config, token_id, member)
             .call(self.context);
-
-        mem_contract_note.deliver(MessageDelivery.ONCHAIN_CONSTRAINED);
     }
 
     #[external("private")]
     fn remove_member(member: AztecAddress) {
-        _validate_captain(self.context, self.storage);
-
-        let this_address = self.context.this_address();
-
-        let mem_contract_note = self.storage.mem_contract.at(this_address).replace(|note| note);
-        let mem_contract = mem_contract_note.get_note().address;
-
+        let mem_contract = _validate_captain(self.context, self.storage);
         Members::at(mem_contract).remove_member(member).call(self.context);
-
-        mem_contract_note.deliver(MessageDelivery.ONCHAIN_CONSTRAINED);
     }
 
     /// @notice Withdraws an amount from the treasury's private balance to the
@@ -236,7 +221,10 @@ contract Governance {
     }
 
     #[contract_library_method]
-    fn _validate_captain(context: &mut PrivateContext, storage: Storage<&mut PrivateContext>) {
+    fn _validate_captain(
+        context: &mut PrivateContext,
+        storage: Storage<&mut PrivateContext>,
+    ) -> AztecAddress {
         let this_address = context.this_address();
 
         let mem_contract_note = storage.mem_contract.at(this_address).replace(|note| note);
@@ -244,6 +232,8 @@ contract Governance {
 
         Members::at(mem_contract).is_captain(context.maybe_msg_sender().unwrap()).call(context);
         mem_contract_note.deliver(MessageDelivery.ONCHAIN_CONSTRAINED);
+
+        mem_contract
     }
 
     #[external("utility")]

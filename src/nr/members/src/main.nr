@@ -28,8 +28,6 @@ pub contract Members {
     };
     // compression library
     use compressed_string::FieldCompressedString;
-    // contract instance registry
-    use contract_instance_registry::ContractInstanceRegistry;
     // note structs
     use crate::types::hat_note::HatNote;
     use address_note::AddressNote;

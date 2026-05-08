@@ -1,4 +1,4 @@
-use dep::aztec::macros::aztec;
+use aztec::macros::aztec;
 
 #[aztec]
 pub contract Treasury {
@@ -54,7 +54,7 @@ pub contract Treasury {
         _validate(self.context, self.storage);
 
         Token::at(token)
-            .transfer_private_to_private(self.context.this_address(), recipient, amount, 0)
+            .transfer_in_private(self.context.this_address(), recipient, amount, 0)
             .call(self.context);
     }
     #[external("private")]
@@ -62,7 +62,7 @@ pub contract Treasury {
         _validate(self.context, self.storage);
 
         NFT::at(nft)
-            .transfer_private_to_private(self.context.this_address(), recipient, token_id, 0)
+            .transfer_in_private(self.context.this_address(), recipient, token_id, 0)
             .call(self.context);
     }
 

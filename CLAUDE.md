@@ -17,7 +17,7 @@ Individual steps: `yarn clean`, `yarn compile`, `yarn codegen`
 
 ## Aztec Version
 
-This project uses **Aztec v4.0.0-devnet.2-patch.1**. Noir contracts use dependencies from this tag.
+This project uses **Aztec v4.2.0-rc.1**. Noir contracts use dependencies from this tag.
 
 ## Architecture
 
